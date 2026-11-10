@@ -41,8 +41,8 @@ function doPost(e) {
 /** Run once from the Apps Script editor after setting SETUP_KEY. */
 function initializeProject() {
   const props = PropertiesService.getScriptProperties();
-  if (!props.getProperty('SETUP_KEY')) {
-    throw new Error('スクリプトプロパティに SETUP_KEY を登録してから実行してください。');
+  if (!props.getProperty('SETUP_KEY') && !props.getProperty('SPREADSHEET_ID')) {
+    throw new Error('初回初期化にはスクリプトプロパティに SETUP_KEY を登録してください。');
   }
   ensureDatabase_();
   Logger.log('初期化しました。スプレッドシートID: ' + props.getProperty('SPREADSHEET_ID'));
