@@ -8,7 +8,7 @@ const APP_CONFIG = {
   FRONTEND_ORIGIN: 'https://a09848281-prog.github.io',
   LINKS_SHEET: 'Links',
   LOCATIONS_SHEET: 'Locations',
-  LINK_HEADERS: ['ID', 'Slug', 'Message', 'DestinationURL', 'ExpiresAt', 'CreatedAt', 'Active', 'DelaySeconds', 'TrackingEnabled'],
+  LINK_HEADERS: ['ID', 'Slug', 'Message', 'DestinationURL', 'ExpiresAt', 'CreatedAt', 'Active', 'DelaySeconds', 'TrackingEnabled', 'PreviewTitle', 'PreviewDescription', 'PreviewImageURL'],
   LOCATION_HEADERS: ['ID', 'Slug', 'Latitude', 'Longitude', 'AccuracyM', 'CapturedAt']
 };
 
@@ -17,6 +17,7 @@ function doGet(e) {
   const action = String(params.action || '');
   if (action === 'publicLink') return publicLinkJsonp_(params);
   if (action === 'verifySave') return verifySaveJsonp_(params);
+  if (action === 'share') return sharePage_(String(params.slug || '').trim());
   return HtmlService.createHtmlOutputFromFile('Admin')
     .setTitle('URL管理')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
@@ -89,6 +90,12 @@ function adminCreateLink(data, token) {
   const destinationUrl = String(data.destinationUrl || '').trim();
   const delaySeconds = Number(data.delaySeconds || 0);
   const trackingEnabled = data.trackingEnabled === true;
+  const previewTitle = String(data.previewTitle || message).trim();
+  const previewDescription = String(data.previewDescription || message).trim();
+  const previewImageURL = String(data.previewImageURL || '').trim();
+  if (!previewTitle || previewTitle.length > 100) throw new Error('プレビュータイトルは1〜100文字にしてください。');
+  if (!previewDescription || previewDescription.length > 300) throw new Error('プレビュー説明文は1〜300文字にしてください。');
+  if (previewImageURL && !isSafeHttpsUrl_(previewImageURL)) throw new Error('プレビュー画像にはHTTPS画像URLを入力してください。');
   if (!/^[A-Za-z0-9_\-\u3040-\u30FF\u3400-\u9FFF]{1,50}$/.test(slug)) {
     throw new Error('URL識別文字は1〜50文字の日本語・英数字・ハイフン・アンダーバーにしてください。');
   }
@@ -111,10 +118,8 @@ function adminCreateLink(data, token) {
     }
     const id = Utilities.getUuid();
     const createdAt = new Date();
-    sheet.appendRow([id, slug, message, destinationUrl, expiresAt, createdAt, true, delaySeconds, trackingEnabled]);
-    const base = PropertiesService.getScriptProperties().getProperty('FRONTEND_URL') || APP_CONFIG.FRONTEND_URL;
-    const separator = base.indexOf('?') >= 0 ? '&' : '?';
-    return { ok: true, id: id, slug: slug, url: base + separator + 'slug=' + encodeURIComponent(slug), expiresAt: expiresAt ? iso_(expiresAt) : '' };
+    sheet.appendRow([id, slug, message, destinationUrl, expiresAt, createdAt, true, delaySeconds, trackingEnabled, previewTitle, previewDescription, previewImageURL]);
+    return { ok: true, id: id, slug: slug, url: buildShareUrl_(slug), expiresAt: expiresAt ? iso_(expiresAt) : '' };
   } finally {
     lock.releaseLock();
   }
@@ -134,7 +139,8 @@ function adminListLinks(token) {
       createdAt: r[5] instanceof Date ? iso_(r[5]) : '',
       active: r[6] === true || String(r[6]).toLowerCase() === 'true',
       delaySeconds: Number(r[7] || 0), trackingEnabled: r[8] === true || String(r[8]).toLowerCase() === 'true',
-      url: base + separator + 'slug=' + encodeURIComponent(String(r[1]))
+      previewTitle: String(r[9] || r[2] || ''), previewDescription: String(r[10] || r[2] || ''), previewImageURL: String(r[11] || ''),
+      url: buildShareUrl_(String(r[1]))
     });
   }
   return { ok: true, links: links };
@@ -224,9 +230,29 @@ function getPublicLink_(slug) {
     if (!active) return { ok: false, error: 'このURLは無効化されています。', code: 'gone' };
     const expiry = r[4] instanceof Date ? r[4] : (r[4] ? new Date(r[4]) : null);
     if (expiry && !isNaN(expiry.getTime()) && expiry.getTime() <= Date.now()) return { ok: false, error: 'このURLは有効期限切れです。', code: 'gone' };
-    return { ok: true, link: { slug: slug, message: String(r[2]), destinationUrl: String(r[3]), delaySeconds: Number(r[7] || 0), trackingEnabled: r[8] === true || String(r[8]).toLowerCase() === 'true' } };
+    return { ok: true, link: { slug: slug, message: String(r[2]), destinationUrl: String(r[3]), delaySeconds: Number(r[7] || 0), trackingEnabled: r[8] === true || String(r[8]).toLowerCase() === 'true', previewTitle: String(r[9] || r[2] || ''), previewDescription: String(r[10] || r[2] || ''), previewImageURL: String(r[11] || '') } };
   }
   return { ok: false, error: 'このURLは見つかりません。', code: 'not_found' };
+}
+
+function buildShareUrl_(slug) {
+  const base = ScriptApp.getService().getUrl();
+  if (!base) throw new Error('GASウェブアプリをデプロイしてからURLを発行してください。');
+  return base + '?action=share&slug=' + encodeURIComponent(slug);
+}
+
+function sharePage_(slug) {
+  const result = getPublicLink_(slug);
+  const template = HtmlService.createTemplateFromFile('Share');
+  const valid = result.ok;
+  const link = valid ? result.link : null;
+  template.previewTitle = valid ? (link.previewTitle || link.message) : '共有リンクを利用できません';
+  template.previewDescription = valid ? (link.previewDescription || link.message) : result.error;
+  template.previewImageURL = valid ? (link.previewImageURL || '') : '';
+  template.shareUrl = buildShareUrl_(slug || '');
+  template.redirectUrl = valid ? (APP_CONFIG.FRONTEND_URL + '?slug=' + encodeURIComponent(slug)) : '';
+  template.pageMessage = valid ? '共有ページを開いています。自動で切り替わらない場合は、下のリンクを押してください。' : result.error;
+  return template.evaluate().setTitle(template.previewTitle).addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
 function ensureDatabase_() {
@@ -248,7 +274,8 @@ function ensureDatabase_() {
   let locations = ss.getSheetByName(APP_CONFIG.LOCATIONS_SHEET);
   if (!locations) locations = ss.insertSheet(APP_CONFIG.LOCATIONS_SHEET);
   if (locations.getLastRow() === 0) locations.appendRow(APP_CONFIG.LOCATION_HEADERS);
-  if (links.getLastColumn() < APP_CONFIG.LINK_HEADERS.length) links.getRange(1, 1, 1, APP_CONFIG.LINK_HEADERS.length).setValues([APP_CONFIG.LINK_HEADERS]);
+  if (links.getLastColumn() < APP_CONFIG.LINK_HEADERS.length) links.insertColumnsAfter(links.getLastColumn(), APP_CONFIG.LINK_HEADERS.length - links.getLastColumn());
+  links.getRange(1, 1, 1, APP_CONFIG.LINK_HEADERS.length).setValues([APP_CONFIG.LINK_HEADERS]);
   return ss;
 }
 
