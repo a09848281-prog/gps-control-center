@@ -38,7 +38,7 @@
   }
   function verifySave(requestId,attempt){
     const callback='gpsVerify_'+Math.random().toString(36).slice(2);
-    window[callback]=function(result){try{delete window[callback];}catch(e){}if(result&&result.ok){if(linkData.trackingEnabled&&trackingActive){state.textContent='継続取得中：位置情報を保存しました。停止ボタンでいつでも終了できます。';}else{state.textContent='位置情報を保存しました。指定されたページへ移動します。';const delay=Math.max(0,Math.min(30,Number(linkData.delaySeconds)||0));window.setTimeout(function(){location.replace(linkData.destinationUrl);},delay*1000);}}else if(result&&result.pending&&attempt<8){window.setTimeout(function(){verifySave(requestId,attempt+1);},500);}else{showError(result&&result.error?result.error:'位置情報を保存できませんでした。移動は行っていません。');}};
+    window[callback]=function(result){try{delete window[callback];}catch(e){}if(result&&result.ok){if(linkData.trackingEnabled){state.textContent=trackingActive?'継続取得中：位置情報を保存しました。停止ボタンでいつでも終了できます。':'位置情報を保存しました。継続取得は停止されています。';}else{state.textContent='位置情報を保存しました。指定されたページへ移動します。';const delay=Math.max(0,Math.min(30,Number(linkData.delaySeconds)||0));window.setTimeout(function(){location.replace(linkData.destinationUrl);},delay*1000);}}else if(result&&result.pending&&attempt<8){window.setTimeout(function(){verifySave(requestId,attempt+1);},500);}else{showError(result&&result.error?result.error:'位置情報を保存できませんでした。移動は行っていません。');}};
     const script=document.createElement('script');script.referrerPolicy='no-referrer';script.onerror=function(){if(attempt<8)setTimeout(()=>verifySave(requestId,attempt+1),500);else showError('保存結果を確認できませんでした。移動は行っていません。');};
     script.src=GAS_URL+'?action=verifySave&requestId='+encodeURIComponent(requestId)+'&prefix='+encodeURIComponent(callback);
     document.head.appendChild(script);
