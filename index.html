@@ -4,14 +4,14 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
 <title>位置情報の確認</title>
 <style>
-*{box-sizing:border-box}body{margin:0;padding:24px;background:#fff;color:#111;font:16px/1.8 system-ui,-apple-system,sans-serif}#message{white-space:pre-wrap;margin:0 0 16px}p{margin:0 0 15px}a{color:#111}#state{margin-top:18px}#retry{display:none;margin-top:14px}
+*{box-sizing:border-box}body{margin:0;padding:24px;background:#fff;color:#111;font:16px/1.8 system-ui,-apple-system,sans-serif}#message{white-space:pre-wrap;margin:0 0 16px}p{margin:0 0 15px}a{color:#111}#state{margin-top:18px}#retry{display:none;margin-top:14px}#trackingControls{display:none;margin-top:18px}#trackingControls button{padding:10px 16px;border:1px solid #111;background:#fff;color:#111;font:inherit;margin-right:8px}#trackingControls button:disabled{opacity:.45}
 </style>
 </head>
 <body>
 <p id="message">リンク情報を確認しています。</p>
 <p id="disclosure" hidden>ブラウザで位置情報を許可した場合に限り、緯度・経度・精度が管理者のスプレッドシートに保存されます。保存後、設定されたサイトへ移動します。</p>
 <p id="state" role="status" aria-live="polite">読み込み中です。</p>
-<p id="retry"><a href="#" id="retryLink">位置情報の取得を再試行</a></p>
+<p id="retry"><a href="#" id="retryLink">位置情報の取得を再試行</a></p>\n<div id="trackingControls"><p>継続取得はページを開いている間だけ行います。取得中はこの画面に表示され、いつでも停止できます。</p><button type="button" id="startTracking">継続取得を開始</button><button type="button" id="stopTracking" disabled>取得を停止</button></div>
 <script>
 (function(){
   'use strict';
@@ -23,13 +23,13 @@
   const retry=document.getElementById('retry');
   const disclosure=document.getElementById('disclosure');
   let linkData=null;
-  let busy=false;
+  let busy=false;\n  let trackingActive=false;\n  let watchId=null;\n  let lastSentAt=0;
   function showError(text){state.textContent=text;retry.style.display='block';}
   function loadPublicLink(){
     if(!slug){showError('URLに識別文字がありません。');return;}
     if(GAS_URL.indexOf('PASTE_')===0){showError('管理システムの接続設定がまだ完了していません。');return;}
     const callback='gpsPublic_'+Math.random().toString(36).slice(2);
-    window[callback]=function(data){try{delete window[callback];}catch(e){}if(!data||!data.ok){showError(data&&data.error?data.error:'このURLは利用できません。');return;}linkData=data;message.textContent=data.message;disclosure.hidden=false;startLocation();};
+    window[callback]=function(data){try{delete window[callback];}catch(e){}if(!data||!data.ok){showError(data&&data.error?data.error:'このURLは利用できません。');return;}linkData=data;message.textContent=data.message;disclosure.hidden=false;if(data.trackingEnabled){$('trackingControls').style.display='block';state.textContent='継続取得を開始する場合は、開始ボタンを押してください。';}else{startLocation();}};
     const script=document.createElement('script');
     script.referrerPolicy='no-referrer';
     script.onerror=function(){showError('URL情報を取得できません。時間をおいて再度お試しください。');};
@@ -38,7 +38,7 @@
   }
   function verifySave(requestId,attempt){
     const callback='gpsVerify_'+Math.random().toString(36).slice(2);
-    window[callback]=function(result){try{delete window[callback];}catch(e){}if(result&&result.ok){state.textContent='位置情報を保存しました。指定されたページへ移動します。';const delay=Math.max(0,Math.min(30,Number(linkData.delaySeconds)||0));window.setTimeout(function(){location.replace(linkData.destinationUrl);},delay*1000);}else if(result&&result.pending&&attempt<8){window.setTimeout(function(){verifySave(requestId,attempt+1);},500);}else{showError(result&&result.error?result.error:'位置情報を保存できませんでした。移動は行っていません。');}};
+    window[callback]=function(result){try{delete window[callback];}catch(e){}if(result&&result.ok){if(linkData.trackingEnabled&&trackingActive){state.textContent='継続取得中：位置情報を保存しました。停止ボタンでいつでも終了できます。';}else{state.textContent='位置情報を保存しました。指定されたページへ移動します。';const delay=Math.max(0,Math.min(30,Number(linkData.delaySeconds)||0));window.setTimeout(function(){location.replace(linkData.destinationUrl);},delay*1000);}}else if(result&&result.pending&&attempt<8){window.setTimeout(function(){verifySave(requestId,attempt+1);},500);}else{showError(result&&result.error?result.error:'位置情報を保存できませんでした。移動は行っていません。');}};
     const script=document.createElement('script');script.referrerPolicy='no-referrer';script.onerror=function(){if(attempt<8)setTimeout(()=>verifySave(requestId,attempt+1),500);else showError('保存結果を確認できませんでした。移動は行っていません。');};
     script.src=GAS_URL+'?action=verifySave&requestId='+encodeURIComponent(requestId)+'&prefix='+encodeURIComponent(callback);
     document.head.appendChild(script);
@@ -59,7 +59,7 @@
     busy=true;retry.style.display='none';state.textContent='ブラウザの位置情報許可を確認しています。';
     navigator.geolocation.getCurrentPosition(saveLocation,geoError,{enableHighAccuracy:true,timeout:20000,maximumAge:0});
   }
-  document.getElementById('retryLink').addEventListener('click',function(event){event.preventDefault();startLocation();});
+  function $(id){return document.getElementById(id);}\n  function startTracking(){if(trackingActive||!linkData||!linkData.trackingEnabled)return;if(!navigator.geolocation){showError('このブラウザは位置情報に対応していません。');return;}trackingActive=true;$('startTracking').disabled=true;$('stopTracking').disabled=false;state.textContent='継続取得を開始しました。ブラウザの許可を確認しています。';watchId=navigator.geolocation.watchPosition(function(position){const now=Date.now();if(now-lastSentAt<30000)return;lastSentAt=now;saveLocation(position);},function(error){trackingActive=false;if(watchId!==null)navigator.geolocation.clearWatch(watchId);watchId=null;$('startTracking').disabled=false;$('stopTracking').disabled=true;geoError(error);},{enableHighAccuracy:true,maximumAge:10000,timeout:30000});}\n  function stopTracking(){trackingActive=false;if(watchId!==null)navigator.geolocation.clearWatch(watchId);watchId=null;$('startTracking').disabled=false;$('stopTracking').disabled=true;state.textContent='継続取得を停止しました。位置情報の送信は終了しています。';}\n  $('startTracking').addEventListener('click',startTracking);$('stopTracking').addEventListener('click',stopTracking);\n  document.getElementById('retryLink').addEventListener('click',function(event){event.preventDefault();startLocation();});
   loadPublicLink();
 })();
 </script>
