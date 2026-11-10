@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="index,follow">
+  <meta name="description" content="<?= previewDescription ?>">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="<?= previewTitle ?>">
+  <meta property="og:description" content="<?= previewDescription ?>">
+  <meta property="og:url" content="<?= shareUrl ?>">
+  <? if (previewImageURL) { ?>
+  <meta property="og:image" content="<?= previewImageURL ?>">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="<?= previewImageURL ?>">
+  <? } else { ?>
+  <meta name="twitter:card" content="summary">
+  <? } ?>
+  <meta name="twitter:title" content="<?= previewTitle ?>">
+  <meta name="twitter:description" content="<?= previewDescription ?>">
+  <title><?= previewTitle ?></title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:#f5f7fb;color:#172033;font:16px/1.7 system-ui,-apple-system,sans-serif}.card{width:min(100%,520px);padding:28px;background:#fff;border:1px solid #e3e8f0;border-radius:18px;box-shadow:0 12px 36px rgba(20,35,65,.07)}h1{font-size:21px;margin:0 0 12px}p{margin:0 0 18px;color:#53617a}a{display:inline-block;padding:11px 18px;border-radius:10px;background:#243b67;color:#fff;text-decoration:none}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1><?= previewTitle ?></h1>
+    <p><?= pageMessage ?></p>
+    <? if (redirectUrl) { ?>
+    <a id="continue" href="<?= redirectUrl ?>" target="_top" rel="noopener">共有ページを開く</a>
+    <script>
+      (function(){
+        var target = <?= JSON.stringify(redirectUrl) ?>;
+        window.setTimeout(function(){
+          try { window.top.location.replace(target); }
+          catch (e) { document.getElementById('continue').style.display = 'inline-block'; }
+        }, 350);
+      })();
+    </script>
+    <? } ?>
+  </main>
+</body>
+</html>
