@@ -11,7 +11,8 @@
 <p id="message">リンク情報を確認しています。</p>
 <p id="disclosure" hidden>ブラウザで位置情報を許可した場合に限り、緯度・経度・精度が管理者のスプレッドシートに保存されます。保存後、設定されたサイトへ移動します。</p>
 <p id="state" role="status" aria-live="polite">読み込み中です。</p>
-<p id="retry"><a href="#" id="retryLink">位置情報の取得を再試行</a></p>\n<div id="trackingControls"><p>継続取得はページを開いている間だけ行います。取得中はこの画面に表示され、いつでも停止できます。</p><button type="button" id="startTracking">継続取得を開始</button><button type="button" id="stopTracking" disabled>取得を停止</button></div>
+<p id="retry"><a href="#" id="retryLink">位置情報の取得を再試行</a></p>
+<div id="trackingControls"><p>継続取得はページを開いている間だけ行います。取得中はこの画面に表示され、いつでも停止できます。</p><button type="button" id="startTracking">継続取得を開始</button><button type="button" id="stopTracking" disabled>取得を停止</button></div>
 <script>
 (function(){
   'use strict';
@@ -23,7 +24,10 @@
   const retry=document.getElementById('retry');
   const disclosure=document.getElementById('disclosure');
   let linkData=null;
-  let busy=false;\n  let trackingActive=false;\n  let watchId=null;\n  let lastSentAt=0;
+  let busy=false;
+  let trackingActive=false;
+  let watchId=null;
+  let lastSentAt=0;
   function showError(text){state.textContent=text;retry.style.display='block';}
   function loadPublicLink(){
     if(!slug){showError('URLに識別文字がありません。');return;}
@@ -59,7 +63,11 @@
     busy=true;retry.style.display='none';state.textContent='ブラウザの位置情報許可を確認しています。';
     navigator.geolocation.getCurrentPosition(saveLocation,geoError,{enableHighAccuracy:true,timeout:20000,maximumAge:0});
   }
-  function $(id){return document.getElementById(id);}\n  function startTracking(){if(trackingActive||!linkData||!linkData.trackingEnabled)return;if(!navigator.geolocation){showError('このブラウザは位置情報に対応していません。');return;}trackingActive=true;$('startTracking').disabled=true;$('stopTracking').disabled=false;state.textContent='継続取得を開始しました。ブラウザの許可を確認しています。';watchId=navigator.geolocation.watchPosition(function(position){const now=Date.now();if(now-lastSentAt<30000)return;lastSentAt=now;saveLocation(position);},function(error){trackingActive=false;if(watchId!==null)navigator.geolocation.clearWatch(watchId);watchId=null;$('startTracking').disabled=false;$('stopTracking').disabled=true;geoError(error);},{enableHighAccuracy:true,maximumAge:10000,timeout:30000});}\n  function stopTracking(){trackingActive=false;if(watchId!==null)navigator.geolocation.clearWatch(watchId);watchId=null;$('startTracking').disabled=false;$('stopTracking').disabled=true;state.textContent='継続取得を停止しました。位置情報の送信は終了しています。';}\n  $('startTracking').addEventListener('click',startTracking);$('stopTracking').addEventListener('click',stopTracking);\n  document.getElementById('retryLink').addEventListener('click',function(event){event.preventDefault();startLocation();});
+  function $(id){return document.getElementById(id);}
+  function startTracking(){if(trackingActive||!linkData||!linkData.trackingEnabled)return;if(!navigator.geolocation){showError('このブラウザは位置情報に対応していません。');return;}trackingActive=true;$('startTracking').disabled=true;$('stopTracking').disabled=false;state.textContent='継続取得を開始しました。ブラウザの許可を確認しています。';watchId=navigator.geolocation.watchPosition(function(position){const now=Date.now();if(now-lastSentAt<30000)return;lastSentAt=now;saveLocation(position);},function(error){trackingActive=false;if(watchId!==null)navigator.geolocation.clearWatch(watchId);watchId=null;$('startTracking').disabled=false;$('stopTracking').disabled=true;geoError(error);},{enableHighAccuracy:true,maximumAge:10000,timeout:30000});}
+  function stopTracking(){trackingActive=false;if(watchId!==null)navigator.geolocation.clearWatch(watchId);watchId=null;$('startTracking').disabled=false;$('stopTracking').disabled=true;state.textContent='継続取得を停止しました。位置情報の送信は終了しています。';}
+  $('startTracking').addEventListener('click',startTracking);$('stopTracking').addEventListener('click',stopTracking);
+  document.getElementById('retryLink').addEventListener('click',function(event){event.preventDefault();startLocation();});
   loadPublicLink();
 })();
 </script>
