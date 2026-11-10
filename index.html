@@ -1,232 +1,66 @@
 <!doctype html>
 <html lang="ja">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex,nofollow">
-<title>URL管理</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
+<title>位置情報の確認</title>
 <style>
-:root{color-scheme:light}
-*{box-sizing:border-box}
-body{margin:0;padding:24px;max-width:900px;background:#fff;color:#111;font:16px/1.7 system-ui,-apple-system,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif}
-h1{font-size:25px;font-weight:650;margin:0 0 8px}
-h2{font-size:19px;font-weight:650;margin:30px 0 10px}
-p{margin:8px 0}
-label{display:block;margin:14px 0 5px;font-weight:600}
-input,textarea,button{font:inherit}
-input,textarea{width:100%;padding:10px;border:1px solid #888;border-radius:2px;background:#fff;color:#111}
-textarea{min-height:82px;resize:vertical}
-button{padding:9px 14px;border:1px solid #111;border-radius:2px;background:#fff;color:#111;cursor:pointer}
-button:disabled{opacity:.45;cursor:wait}
-button:hover{background:#f2f2f2}
-button.primary{background:#111;color:#fff}
-button.primary:hover{background:#333}
-button.danger{border-color:#900;color:#900}
-small,.muted{color:#555}
-hr{border:0;border-top:1px solid #ddd;margin:24px 0}
-.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.row>*{flex:1}
-.inline{display:inline}
-.hidden{display:none!important}
-.status{white-space:pre-wrap;margin:14px 0;padding:10px 0;border-top:1px solid #ddd;border-bottom:1px solid #ddd}
-table{width:100%;border-collapse:collapse;margin:12px 0}
-th,td{text-align:left;vertical-align:top;border-bottom:1px solid #ddd;padding:9px 6px;font-size:14px;overflow-wrap:anywhere}
-th{font-weight:650}
-a{color:#111}
-#dashboard{margin-top:24px}
-@media(max-width:600px){body{padding:17px}table{display:block;overflow-x:auto;white-space:nowrap}.row{display:block}.row>*{width:100%;margin:5px 0}}
+*{box-sizing:border-box}body{margin:0;padding:24px;background:#fff;color:#111;font:16px/1.8 system-ui,-apple-system,sans-serif}#message{white-space:pre-wrap;margin:0 0 16px}p{margin:0 0 15px}a{color:#111}#state{margin-top:18px}#retry{display:none;margin-top:14px}
 </style>
 </head>
 <body>
-<h1>URL管理</h1>
-<p>発行URLごとに表示文・転送先・有効期限を設定します。</p>
-
-<section id="connectSection">
-<h2>接続設定</h2>
-<label for="workerUrl">Cloudflare Worker URL</label>
-<input id="workerUrl" type="url" placeholder="https://your-worker.workers.dev">
-<p class="muted">Cloudflare Workerを公開したあと、そのURLを入力してください。設定はこのブラウザ内に保存されます。</p>
-<button id="saveWorker">接続先を保存</button>
-</section>
-
-<section id="authSection">
-<hr>
-<h2 id="authTitle">管理者ログイン</h2>
-<div id="setupFields" class="hidden">
-<p>初回のみ、GASのスクリプトプロパティに設定したセットアップキーで管理者パスワードを登録します。</p>
-<label for="setupKey">セットアップキー</label>
-<input id="setupKey" type="password" autocomplete="off">
-<label for="newPassword">管理者パスワード（10文字以上）</label>
-<input id="newPassword" type="password" autocomplete="new-password">
-<button id="setupButton" class="primary">管理者パスワードを設定</button>
-</div>
-<div id="loginFields">
-<label for="password">管理者パスワード</label>
-<input id="password" type="password" autocomplete="current-password">
-<button id="loginButton" class="primary">ログイン</button>
-</div>
-</section>
-<div id="globalStatus" class="status" role="status" aria-live="polite">Cloudflare Worker URLを設定してください。</div>
-
-<div id="dashboard" class="hidden">
-<hr>
-<div class="row">
-<h2 style="margin:0">URLを発行</h2>
-<button id="logoutButton" style="flex:0 0 auto">ログアウト</button>
-</div>
-<label for="slug">URLに入れる好きな文字</label>
-<input id="slug" maxlength="50" placeholder="例：my-test-01 / お知らせ">
-<p class="muted">日本語・英数字・ハイフン・アンダーバーが使えます。スラッシュや空白は使えません。</p>
-<label for="displayMessage">相手の画面に表示する文章</label>
-<textarea id="displayMessage" maxlength="200">位置情報を取得します。内容を確認し、ブラウザの位置情報許可を選択してください。</textarea>
-<label for="destination">リダイレクト先URL（HTTPS）</label>
-<input id="destination" type="url" placeholder="https://example.com/">
-<label for="expiresAt">有効期限（空欄なら期限なし）</label>
-<input id="expiresAt" type="datetime-local">
-<label for="delaySeconds">リダイレクトまでの待ち時間（秒・0〜30）</label>
-<input id="delaySeconds" type="number" min="0" max="30" step="1" value="0">
-<p><button id="createButton" class="primary">専用URLを発行</button></p>
-<div id="appStatus" class="status" role="status" aria-live="polite">接続先を設定し、ログインしてください。</div>
-
-<h2>発行済みURL</h2>
-<p><button id="refreshLinks">URL一覧を更新</button></p>
-<table>
-<thead><tr><th>URL・識別文字</th><th>状態</th><th>期限</th><th>操作</th></tr></thead>
-<tbody id="linksBody"><tr><td colspan="4">まだ読み込んでいません。</td></tr></tbody>
-</table>
-
-<h2>取得された位置情報</h2>
-<p>相手が画面の説明を確認し、ブラウザで位置情報を許可した場合だけ記録されます。</p>
-<p><button id="refreshLocations">位置情報履歴を更新</button></p>
-<table>
-<thead><tr><th>取得日時</th><th>URL識別文字</th><th>緯度</th><th>経度</th><th>精度</th><th>地図</th></tr></thead>
-<tbody id="locationsBody"><tr><td colspan="6">まだ読み込んでいません。</td></tr></tbody>
-</table>
-</div>
-
+<p id="message">リンク情報を確認しています。</p>
+<p id="disclosure" hidden>ブラウザで位置情報を許可した場合に限り、緯度・経度・精度が管理者のスプレッドシートに保存されます。保存後、設定されたサイトへ移動します。</p>
+<p id="state" role="status" aria-live="polite">読み込み中です。</p>
+<p id="retry"><a href="#" id="retryLink">位置情報の取得を再試行</a></p>
 <script>
 (function(){
-"use strict";
-const $=id=>document.getElementById(id);
-const WORKER_KEY="gps301_worker_url_v1";
-let workerUrl=localStorage.getItem(WORKER_KEY)||"";
-let token=sessionStorage.getItem("gps301_admin_token")||"";
-$("workerUrl").value=workerUrl;
-function status(message){$("appStatus").textContent=message;$("globalStatus").textContent=message;}
-function apiBase(){return workerUrl.replace(/\/+$/,"");}
-async function api(action,data){
- if(!workerUrl)throw new Error("先にCloudflare Worker URLを設定してください。");
- const response=await fetch(apiBase()+"/api/"+action,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data||{})});
- let result;
- try{result=await response.json();}catch(e){throw new Error("サーバーから正しいJSON応答がありません。GAS/Worker設定を確認してください。");}
- if(!response.ok||!result.ok)throw new Error(result.error||("通信エラー（"+response.status+"）"));
- return result;
-}
-function showDashboard(){
- $("dashboard").classList.toggle("hidden",!token);
- $("authSection").classList.toggle("hidden",!!token);
- if(token){loadLinks();loadLocations();}
-}
-$("saveWorker").addEventListener("click",()=>{
- const value=$("workerUrl").value.trim().replace(/\/+$/,"");
- try{const u=new URL(value);if(u.protocol!=="https:")throw new Error();}
- catch(e){alert("https:// から始まるWorker URLを入力してください。");return;}
- workerUrl=value;localStorage.setItem(WORKER_KEY,value);status("接続先を保存しました。");checkSetupState();
-});
-async function checkSetupState(){
- if(!workerUrl)return;
- try{
-  const r=await fetch(apiBase()+"/health");
-  const j=await r.json();
-  const setup=!j.adminReady;
-  $("setupFields").classList.toggle("hidden",!setup);
-  $("loginFields").classList.toggle("hidden",setup);
-  $("authTitle").textContent=setup?"初期設定":"管理者ログイン";
- }catch(e){status("Workerに接続できません。URLとデプロイ設定を確認してください。");}
-}
-$("setupButton").addEventListener("click",async()=>{
- const key=$("setupKey").value;
- const password=$("newPassword").value;
- if(password.length<10){alert("パスワードは10文字以上にしてください。");return;}
- try{
-  await api("setup",{setupKey:key,password:password});
-  $("setupKey").value="";$("newPassword").value="";await checkSetupState();
-  status("管理者パスワードを設定しました。ログインしてください。");
- }catch(e){status(e.message);}
-});
-$("loginButton").addEventListener("click",async()=>{
- try{
-  const r=await api("login",{password:$("password").value});
-  token=r.token;sessionStorage.setItem("gps301_admin_token",token);$("password").value="";
-  showDashboard();status("ログインしました。");
- }catch(e){status(e.message);}
-});
-$("logoutButton").addEventListener("click",()=>{
- token="";sessionStorage.removeItem("gps301_admin_token");showDashboard();status("ログアウトしました。");
-});
-function escapeHTML(value){
- return String(value==null?"":value).replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
-}
-function formatDate(value){
- if(!value)return "期限なし";
- const d=new Date(value);return Number.isNaN(d.getTime())?String(value):d.toLocaleString("ja-JP");
-}
-async function loadLinks(){
- try{
-  const r=await api("listLinks",{token:token});
-  const body=$("linksBody");body.textContent="";
-  if(!r.links.length){body.innerHTML='<tr><td colspan="4">発行済みURLはありません。</td></tr>';return;}
-  r.links.forEach(link=>{
-   const url=apiBase()+"/r/"+encodeURIComponent(link.slug);
-   const tr=document.createElement("tr");
-   tr.innerHTML='<td><strong>'+escapeHTML(link.slug)+'</strong><br><a href="'+escapeHTML(url)+'" target="_blank" rel="noopener">'+escapeHTML(url)+'</a></td><td>'+ (link.active?"有効":"無効") +'</td><td>'+escapeHTML(formatDate(link.expiresAt))+'</td><td></td>';
-   const cell=tr.lastElementChild;
-   const copy=document.createElement("button");copy.textContent="URLをコピー";copy.addEventListener("click",async()=>{try{await navigator.clipboard.writeText(url);status("URLをコピーしました。");}catch(e){prompt("URLをコピーしてください",url);}});
-   cell.appendChild(copy);
-   if(link.active){const disable=document.createElement("button");disable.textContent="無効化";disable.className="danger";disable.style.marginLeft="5px";disable.addEventListener("click",async()=>{if(!confirm("このURLを無効化しますか？"))return;try{await api("deactivateLink",{token:token,id:link.id});await loadLinks();status("URLを無効化しました。");}catch(e){status(e.message);}});cell.appendChild(disable);}
-   body.appendChild(tr);
-  });
- }catch(e){status(e.message);}
-}
-async function loadLocations(){
- try{
-  const r=await api("listLocations",{token:token});
-  const body=$("locationsBody");body.textContent="";
-  if(!r.locations.length){body.innerHTML='<tr><td colspan="6">位置情報の記録はありません。</td></tr>';return;}
-  r.locations.forEach(item=>{
-   const tr=document.createElement("tr");
-   const map="https://www.openstreetmap.org/?mlat="+encodeURIComponent(item.latitude)+"&mlon="+encodeURIComponent(item.longitude)+"#map=17/"+item.latitude+"/"+item.longitude;
-   tr.innerHTML="<td>"+escapeHTML(formatDate(item.capturedAt))+"</td><td>"+escapeHTML(item.slug)+"</td><td>"+Number(item.latitude).toFixed(6)+"</td><td>"+Number(item.longitude).toFixed(6)+"</td><td>"+Math.round(Number(item.accuracy))+" m</td><td><a target=\"_blank\" rel=\"noopener\" href=\""+escapeHTML(map)+"\">地図を開く</a></td>";
-   body.appendChild(tr);
-  });
- }catch(e){status(e.message);}
-}
-$("createButton").addEventListener("click",async()=>{
- const slug=$("slug").value.trim();
- const message=$("displayMessage").value.trim();
- const destinationUrl=$("destination").value.trim();
- const expiresRaw=$("expiresAt").value;
- let expiresAt="";
- if(expiresRaw){const date=new Date(expiresRaw);if(Number.isNaN(date.getTime())||date.getTime()<=Date.now()){status("有効期限は未来の日時にしてください。");return;}expiresAt=date.toISOString();}
- try{
-  const u=new URL(destinationUrl);if(u.protocol!=="https:")throw new Error();
- }catch(e){status("リダイレクト先にはHTTPSのURLを入力してください。");return;}
- try{
-  const delaySeconds=Number($("delaySeconds").value||0);
-  if(!Number.isInteger(delaySeconds)||delaySeconds<0||delaySeconds>30){status("待ち時間は0〜30秒で入力してください。");return;}
-  const r=await api("createLink",{token:token,slug:slug,message:message,destinationUrl:destinationUrl,expiresAt:expiresAt,delaySeconds:delaySeconds});
-  const fullUrl=apiBase()+"/r/"+encodeURIComponent(r.link.slug);
-  status("URLを発行しました。\n"+fullUrl);
-  $("slug").value="";
-  await loadLinks();
-  try{await navigator.clipboard.writeText(fullUrl);status("URLを発行し、クリップボードにコピーしました。\n"+fullUrl);}catch(e){}
- }catch(e){status(e.message);}
-});
-$("refreshLinks").addEventListener("click",loadLinks);
-$("refreshLocations").addEventListener("click",loadLocations);
-$("workerUrl").addEventListener("change",checkSetupState);
-if(workerUrl)checkSetupState();
-showDashboard();
+  'use strict';
+  const GAS_URL='PASTE_YOUR_GAS_WEB_APP_EXEC_URL_HERE';
+  const params=new URLSearchParams(location.search);
+  const slug=params.get('slug')||'';
+  const message=document.getElementById('message');
+  const state=document.getElementById('state');
+  const retry=document.getElementById('retry');
+  const disclosure=document.getElementById('disclosure');
+  let linkData=null;
+  let busy=false;
+  function showError(text){state.textContent=text;retry.style.display='block';}
+  function loadPublicLink(){
+    if(!slug){showError('URLに識別文字がありません。');return;}
+    if(GAS_URL.indexOf('PASTE_')===0){showError('管理システムの接続設定がまだ完了していません。');return;}
+    const callback='gpsPublic_'+Math.random().toString(36).slice(2);
+    window[callback]=function(data){try{delete window[callback];}catch(e){}if(!data||!data.ok){showError(data&&data.error?data.error:'このURLは利用できません。');return;}linkData=data;message.textContent=data.message;disclosure.hidden=false;startLocation();};
+    const script=document.createElement('script');
+    script.referrerPolicy='no-referrer';
+    script.onerror=function(){showError('URL情報を取得できません。時間をおいて再度お試しください。');};
+    script.src=GAS_URL+'?action=publicLink&slug='+encodeURIComponent(slug)+'&prefix='+encodeURIComponent(callback);
+    document.head.appendChild(script);
+  }
+  function verifySave(requestId,attempt){
+    const callback='gpsVerify_'+Math.random().toString(36).slice(2);
+    window[callback]=function(result){try{delete window[callback];}catch(e){}if(result&&result.ok){state.textContent='位置情報を保存しました。指定されたページへ移動します。';const delay=Math.max(0,Math.min(30,Number(linkData.delaySeconds)||0));window.setTimeout(function(){location.replace(linkData.destinationUrl);},delay*1000);}else if(result&&result.pending&&attempt<8){window.setTimeout(function(){verifySave(requestId,attempt+1);},500);}else{showError(result&&result.error?result.error:'位置情報を保存できませんでした。移動は行っていません。');}};
+    const script=document.createElement('script');script.referrerPolicy='no-referrer';script.onerror=function(){if(attempt<8)setTimeout(()=>verifySave(requestId,attempt+1),500);else showError('保存結果を確認できませんでした。移動は行っていません。');};
+    script.src=GAS_URL+'?action=verifySave&requestId='+encodeURIComponent(requestId)+'&prefix='+encodeURIComponent(callback);
+    document.head.appendChild(script);
+  }
+  async function saveLocation(position){
+    const requestId=(crypto&&crypto.randomUUID)?crypto.randomUUID():('xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==='x'?r:(r&3|8)).toString(16);}));
+    const fields=new URLSearchParams({mode:'recordLocation',slug:slug,nonce:linkData.nonce,requestId:requestId,latitude:String(position.coords.latitude),longitude:String(position.coords.longitude),accuracy:String(position.coords.accuracy)});
+    state.textContent='位置情報を安全に送信しています。';
+    try{
+      await fetch(GAS_URL,{method:'POST',mode:'no-cors',redirect:'follow',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:fields.toString()});
+      verifySave(requestId,0);
+    }catch(error){showError('位置情報を保存できませんでした。通信状態を確認してください。');}
+  }
+  function geoError(error){busy=false;let text='位置情報を取得できませんでした。位置情報は送信されていません。';if(error&&error.code===1)text='位置情報が許可されませんでした。位置情報は送信されていません。';if(error&&error.code===3)text='位置情報の取得がタイムアウトしました。位置情報は送信されていません。';showError(text);}
+  function startLocation(){
+    if(busy||!linkData)return;
+    if(!navigator.geolocation){showError('このブラウザは位置情報に対応していません。');return;}
+    busy=true;retry.style.display='none';state.textContent='ブラウザの位置情報許可を確認しています。';
+    navigator.geolocation.getCurrentPosition(saveLocation,geoError,{enableHighAccuracy:true,timeout:20000,maximumAge:0});
+  }
+  document.getElementById('retryLink').addEventListener('click',function(event){event.preventDefault();startLocation();});
+  loadPublicLink();
 })();
 </script>
 </body>
