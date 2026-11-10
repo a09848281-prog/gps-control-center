@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0b1220">
+  <title>GPS Control Center | GPS位置情報コントロールセンター</title>
+  <meta name="description" content="許可された端末のGPS位置を確認・計測するツール。位置情報はこの端末内で扱い、外部サーバーには送信しません。">
+  <meta property="og:title" content="GPS Control Center | GPS位置情報コントロールセンター">
+  <meta property="og:description" content="許可された端末のGPS位置を確認・計測するツール。位置情報はこの端末内で扱い、外部サーバーには送信しません。">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="">
+  <style>
+    :root{color-scheme:dark;--bg:#08111f;--panel:#101d30;--panel2:#14243a;--line:#263951;--text:#e8f0fb;--muted:#8ea3bd;--cyan:#5be0d0;--blue:#6ba8ff;--green:#56d69a;--amber:#f5c36a;--red:#ff7777}
+    *{box-sizing:border-box}
+    body{margin:0;background:radial-gradient(ellipse at 75% -20%,#183453 0,transparent 48%),var(--bg);color:var(--text);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh}
+    button,input,textarea{font:inherit}
+    button{cursor:pointer}
+    .topbar{height:70px;border-bottom:1px solid #22354d;background:#091321eF;display:flex;align-items:center;justify-content:space-between;padding:0 max(20px,calc((100vw - 1240px)/2));position:sticky;top:0;z-index:5;backdrop-filter:blur(14px)}
+    .brand{display:flex;gap:12px;align-items:center;font-weight:750;letter-spacing:.04em}
+    .brandmark{width:38px;height:38px;border-radius:12px;background:linear-gradient(145deg,#1e5666,#17304f);display:grid;place-items:center;color:var(--cyan);font-size:20px;border:1px solid #3a7180}
+    .brand small{display:block;color:var(--muted);font-size:10px;font-weight:600;letter-spacing:.16em;margin-top:2px}
+    .connection{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:12px}
+    .dot{width:8px;height:8px;border-radius:50%;background:#71839a;box-shadow:0 0 10px #71839a}
+    .dot.active{background:var(--green);box-shadow:0 0 12px #56d69a}
+    .wrap{max-width:1240px;padding:26px 20px 60px;margin:auto}
+    .hero{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin:8px 0 22px}
+    .eyebrow{color:var(--cyan);font-size:11px;font-weight:800;letter-spacing:.2em}
+    h1{font-size:clamp(24px,4vw,34px);margin:7px 0 6px;letter-spacing:-.04em}
+    .sub{color:var(--muted);font-size:13px;line-height:1.7;margin:0}
+    .local-badge{border:1px solid #2e635c;background:#102c2b;color:#9ce9d8;border-radius:999px;padding:8px 12px;font-size:11px;white-space:nowrap}
+    .grid{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(300px,.85fr);gap:18px;align-items:start}
+    .stack{display:grid;gap:18px}
+    .card{background:linear-gradient(160deg,#14243a,#0e1a2b);border:1px solid var(--line);border-radius:17px;overflow:hidden;box-shadow:0 12px 35px #0002}
+    .cardhead{padding:16px 18px;border-bottom:1px solid #263951;display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .cardhead h2{margin:0;font-size:14px;letter-spacing:.02em}
+    .tag{font-size:10px;color:var(--cyan);border:1px solid #32636b;padding:4px 8px;border-radius:999px}
+    .mapbox{height:360px;background:linear-gradient(135deg,#10253b,#0b1727);position:relative}
+    .mapbox iframe{width:100%;height:100%;border:0;display:none;filter:saturate(.8)}
+    .mapempty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px;color:var(--muted);background-image:linear-gradient(#18334b33 1px,transparent 1px),linear-gradient(90deg,#18334b33 1px,transparent 1px);background-size:34px 34px}
+    .mapempty strong{display:block;color:#d6e7f8;margin-bottom:6px}
+    .mapnote{position:absolute;left:12px;bottom:12px;background:#07111de8;border:1px solid #344a62;padding:7px 10px;border-radius:8px;font-size:10px;color:#b8c8da}
+    .metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:#263951;border-top:1px solid #263951}
+    .metric{background:#102035;padding:14px 15px;min-width:0}
+    .metric label{font-size:10px;color:var(--muted);display:block;margin-bottom:7px}
+    .metric strong{display:block;font-size:15px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+    .metric span{font-size:10px;color:#7f95af}
+    .actions{display:flex;gap:9px;flex-wrap:wrap;padding:15px 18px}
+    .btn{border:1px solid #36506c;background:#1a2e48;color:var(--text);padding:10px 14px;border-radius:10px;font-size:12px;font-weight:700;transition:.15s}
+    .btn:hover{filter:brightness(1.18);transform:translateY(-1px)}
+    .btn.primary{background:linear-gradient(120deg,#1f807b,#236a91);border-color:#3b9998;color:white}
+    .btn.stop{background:#47252d;border-color:#87434b;color:#ffd7d7}
+    .btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+    .sidecard{padding:17px}
+    .sidecard h2{font-size:14px;margin:0 0 14px}
+    .statusline{display:flex;align-items:center;gap:9px;padding:11px 12px;background:#0b192a;border:1px solid #263951;border-radius:10px;color:var(--muted);font-size:12px;line-height:1.5;margin-bottom:12px}
+    .controlgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+    .controlgrid .btn{width:100%;min-height:45px}
+    .fineprint{font-size:11px;color:var(--muted);line-height:1.65;margin:13px 1px 0}
+    .sectionrow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+    .sectionrow h2{font-size:14px;margin:0}
+    .count{color:var(--muted);font-size:11px}
+    .historylist{max-height:320px;overflow:auto}
+    .historyitem{display:grid;grid-template-columns:42px 1fr auto;gap:11px;align-items:center;padding:12px 16px;border-top:1px solid #263951}
+    .historyicon{width:38px;height:38px;border-radius:11px;background:#19334b;display:grid;place-items:center;color:var(--cyan)}
+    .historyitem strong{font-size:12px;display:block;font-variant-numeric:tabular-nums}
+    .historyitem small{display:block;color:var(--muted);font-size:10px;margin-top:4px}
+    .historyitem button{font-size:10px;color:#a9c6e5;background:none;border:0}
+    .empty{padding:28px 16px;text-align:center;color:var(--muted);font-size:12px}
+    .settinggrid{display:grid;gap:12px;padding:16px 18px}
+    .field label{display:block;color:#a8bbd0;font-size:11px;margin-bottom:6px}
+    .field input,.field textarea{width:100%;background:#091625;border:1px solid #324a63;border-radius:9px;color:var(--text);padding:10px 11px;outline:none}
+    .field input:focus,.field textarea:focus{border-color:var(--cyan);box-shadow:0 0 0 2px #5be0d022}
+    .field textarea{resize:vertical;min-height:74px;line-height:1.5}
+    .preview{margin:0 18px 15px;border:1px solid #31465d;background:#f7f9fc;color:#1c2634;border-radius:11px;padding:12px;max-width:460px}
+    .preview .pvsite{color:#677789;font-size:10px;margin-bottom:5px}
+    .preview .pvtitle{font-weight:750;font-size:13px;margin-bottom:5px}
+    .preview .pvdesc{font-size:11px;line-height:1.5;color:#566273}
+    .codebox{margin:0 18px 14px;background:#081321;border:1px solid #263951;border-radius:9px;padding:10px;color:#9bb1c9;font-family:ui-monospace,monospace;font-size:10px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere;max-height:118px;overflow:auto}
+    .hint{padding:0 18px 17px;color:var(--muted);font-size:10px;line-height:1.65}
+    .notice{padding:12px 14px;border-radius:10px;border:1px solid #3b536b;background:#0c1a2a;color:#9fb5cb;font-size:11px;line-height:1.7}
+    .footer{text-align:center;margin-top:28px;color:#627990;font-size:10px;line-height:1.8}
+    @media(max-width:850px){.grid{grid-template-columns:1fr}.mapbox{height:320px}.hero{align-items:flex-start;flex-direction:column}.local-badge{white-space:normal}}
+    @media(max-width:520px){.topbar{height:62px;padding:0 15px}.wrap{padding:20px 12px 40px}.metrics{grid-template-columns:repeat(2,1fr)}.mapbox{height:280px}.cardhead{padding:14px}.actions{padding:12px}.btn{flex:1}.historyitem{padding:11px 12px}.connection{font-size:10px}}
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><div class="brandmark">⌖</div><div>GPS CONTROL CENTER<small>LOCATION INTELLIGENCE / WEB TOOL</small></div></div>
+    <div class="connection"><span class="dot" id="liveDot"></span><span id="topStatus">GPS 未接続</span></div>
+  </header>
+  <main class="wrap">
+    <section class="hero">
+      <div><div class="eyebrow">POSITIONING SYSTEM / 01</div><h1>GPS位置情報コントロールセンター</h1><p class="sub">この端末の位置を、許可を得て計測・確認します。位置情報は外部サーバーへ自動送信されません。</p></div>
+      <div class="local-badge">🔒 端末内処理・明示的な許可制</div>
+    </section>
+    <div class="grid">
+      <div class="stack">
+        <section class="card">
+          <div class="cardhead"><h2>📡 現在地マップ</h2><span class="tag" id="mapTag">位置情報待機中</span></div>
+          <div class="mapbox">
+            <iframe id="mapFrame" title="現在地の地図" loading="lazy" referrerpolicy="no-referrer"></iframe>
+            <div class="mapempty" id="mapEmpty"><div><strong>現在地はまだ取得されていません</strong>「現在地を取得」を押すと、ブラウザが位置情報の許可を求めます。</div></div>
+            <div class="mapnote" id="mapNote">地図：OpenStreetMap</div>
+          </div>
+          <div class="metrics">
+            <div class="metric"><label>緯度 / LATITUDE</label><strong id="lat">--</strong><span>degrees</span></div>
+            <div class="metric"><label>経度 / LONGITUDE</label><strong id="lon">--</strong><span>degrees</span></div>
+            <div class="metric"><label>精度 / ACCURACY</label><strong id="accuracy">--</strong><span>推定誤差半径</span></div>
+            <div class="metric"><label>高度 / ALTITUDE</label><strong id="altitude">--</strong><span>海抜・取得できる場合</span></div>
+            <div class="metric"><label>速度 / SPEED</label><strong id="speed">--</strong><span>GPSが提供する場合</span></div>
+            <div class="metric"><label>方角 / HEADING</label><strong id="heading">--</strong><span>GPSが提供する場合</span></div>
+          </div>
+          <div class="actions">
+            <button class="btn primary" id="getBtn">◎ 現在地を取得</button>
+            <button class="btn" id="copyBtn" disabled>座標をコピー</button>
+            <button class="btn" id="mapOpenBtn" disabled>地図を開く ↗</button>
+          </div>
+        </section>
+        <section class="card">
+          <div class="cardhead"><h2>🧭 移動計測ログ</h2><span class="tag" id="trackTag">停止中</span></div>
+          <div class="metrics">
+            <div class="metric"><label>累計移動距離</label><strong id="distance">0 m</strong><span>計測開始後の推定値</span></div>
+            <div class="metric"><label>計測時間</label><strong id="duration">00:00</strong><span>この画面を開いている間</span></div>
+            <div class="metric"><label>記録ポイント</label><strong id="points">0</strong><span>端末内に保存</span></div>
+          </div>
+          <div class="actions">
+            <button class="btn primary" id="startBtn">▶ 計測開始</button>
+            <button class="btn stop" id="stopBtn" disabled>■ 計測停止</button>
+            <button class="btn" id="resetBtn">計測リセット</button>
+          </div>
+          <div class="hint">移動計測はこのページを開いている間だけ動作します。ブラウザを閉じたり、端末がスリープすると停止・中断する場合があります。</div>
+        </section>
+        <section class="card">
+          <div class="cardhead"><h2>🗂 取得履歴</h2><span class="count" id="historyCount">0 件</span></div>
+          <div class="actions">
+            <button class="btn" id="csvBtn">CSVを書き出す</button>
+            <button class="btn" id="jsonBtn">JSONを書き出す</button>
+            <button class="btn" id="clearBtn">履歴を削除</button>
+          </div>
+          <div class="historylist" id="historyList"><div class="empty">位置情報を取得すると、ここに履歴が表示されます。</div></div>
+        </section>
+      </div>
+      <aside class="stack">
+        <section class="card sidecard">
+          <h2>⚙️ GPSコントロール</h2>
+          <div class="statusline"><span class="dot" id="sideDot"></span><span id="statusText">位置情報はまだ取得していません。</span></div>
+          <div class="controlgrid">
+            <button class="btn primary" id="sideGetBtn">現在地を取得</button>
+            <button class="btn" id="sideTrackBtn">移動計測開始</button>
+          </div>
+          <p class="fineprint">位置情報を要求するのは、あなたが取得・計測ボタンを押したときだけです。許可の取り消しは端末やブラウザの設定から行えます。</p>
+        </section>
+        <section class="card">
+          <div class="cardhead"><h2>🔗 LINE共有プレビュー設定</h2><span class="tag">OGP</span></div>
+          <div class="settinggrid">
+            <div class="field"><label for="ogTitle">LINEに表示するタイトル</label><input id="ogTitle" maxlength="100" value="GPS Control Center | GPS位置情報コントロールセンター"></div>
+            <div class="field"><label for="ogDescription">URLの下に表示する説明文</label><textarea id="ogDescription" maxlength="250">許可された端末のGPS位置を確認・計測するツール。位置情報はこの端末内で扱い、外部サーバーには送信しません。</textarea></div>
+          </div>
+          <div class="preview">
+            <div class="pvsite" id="pvSite">あなたのGitHub Pages URL</div>
+            <div class="pvtitle" id="pvTitle">GPS Control Center | GPS位置情報コントロールセンター</div>
+            <div class="pvdesc" id="pvDescription">許可された端末のGPS位置を確認・計測するツール。位置情報はこの端末内で扱い、外部サーバーには送信しません。</div>
+          </div>
+          <div class="codebox" id="ogCode"></div>
+          <div class="actions"><button class="btn primary" id="copyOgBtn">OGP設定コードをコピー</button><button class="btn" id="defaultOgBtn">初期値に戻す</button></div>
+          <div class="hint">入力内容はこの画面のプレビューと設定コードに反映されます。LINEで実際に表示するには、生成された og:title / og:description を index.html の head に反映してGitHubへ保存してください。GitHub Pagesだけでは、URLごとのプレビュー文をその場で自動生成できません。LINE側に古い表示が残る場合もあります。</div>
+        </section>
+        <section class="card sidecard">
+          <h2>📤 URLを共有</h2>
+          <div class="notice">このボタンはアプリのURLだけを共有します。現在地や履歴はURLに含めず、相手へ自動送信もしません。</div>
+          <div class="actions" style="padding:14px 0 0"><button class="btn primary" id="shareBtn">アプリのURLをコピー</button></div>
+        </section>
+        <div class="notice">⚠️ このアプリは相手の端末を遠隔追跡するものではありません。位置情報は、その端末を操作する本人がページを開き、ブラウザで許可した場合にだけ取得できます。</div>
+      </aside>
+    </div>
+    <footer class="footer">GPS CONTROL CENTER · GitHub Pages / HTML / CSS / JavaScript<br>地図：OpenStreetMap · 位置情報：ブラウザ Geolocation API</footer>
+  </main>
+<script>
+(function(){
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const STORE_KEY = "gps-control-center-history-v1";
+  const defaults = {
+    title: "GPS Control Center | GPS位置情報コントロールセンター",
+    description: "許可された端末のGPS位置を確認・計測するツール。位置情報はこの端末内で扱い、外部サーバーには送信しません。"
+  };
+  let current = null;
+  let watchId = null;
+  let startedAt = 0;
+  let elapsedTimer = null;
+  let totalMeters = 0;
+  let lastTrackPoint = null;
+  let trackPoints = 0;
+  let history = loadHistory();
+
+  function loadHistory(){
+    try{
+      const value = JSON.parse(localStorage.getItem(STORE_KEY) || "[]");
+      return Array.isArray(value) ? value : [];
+    }catch(e){ return []; }
+  }
+  function saveHistory(){
+    try{ localStorage.setItem(STORE_KEY, JSON.stringify(history.slice(0,1000))); }
+    catch(e){ setStatus("端末内への保存に失敗しました。ブラウザの保存容量を確認してください。",false); }
+  }
+  function setStatus(message, active){
+    $("statusText").textContent = message;
+    $("topStatus").textContent = active ? "GPS 計測中" : "GPS 接続済み";
+    $("liveDot").classList.toggle("active",!!active);
+    $("sideDot").classList.toggle("active",!!active);
+  }
+  function fmt(value, digits){
+    return Number.isFinite(value) ? value.toFixed(digits) : "--";
+  }
+  function timeText(date){
+    return new Date(date).toLocaleString("ja-JP",{year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"});
+  }
+  function renderPosition(position, addToHistory){
+    const c = position.coords;
+    current = {
+      latitude:c.latitude, longitude:c.longitude, accuracy:c.accuracy,
+      altitude:c.altitude, speed:c.speed, heading:c.heading,
+      timestamp:position.timestamp || Date.now()
+    };
+    $("lat").textContent = fmt(c.latitude,6);
+    $("lon").textContent = fmt(c.longitude,6);
+    $("accuracy").textContent = Number.isFinite(c.accuracy) ? Math.round(c.accuracy)+" m" : "--";
+    $("altitude").textContent = Number.isFinite(c.altitude) ? Math.round(c.altitude)+" m" : "--";
+    $("speed").textContent = Number.isFinite(c.speed) ? (c.speed*3.6).toFixed(1)+" km/h" : "--";
+    $("heading").textContent = Number.isFinite(c.heading) ? Math.round(c.heading)+"°" : "--";
+    $("mapTag").textContent = "位置情報取得済み";
+    $("mapEmpty").style.display = "none";
+    $("mapFrame").style.display = "block";
+    const lat = c.latitude, lon = c.longitude, d = 0.008;
+    const bbox = [lon-d,lat-d,lon+d,lat+d].join("%2C");
+    $("mapFrame").src = "https://www.openstreetmap.org/export/embed.html?bbox="+bbox+"&layer=mapnik&marker="+lat+"%2C"+lon;
+    $("copyBtn").disabled = false;
+    $("mapOpenBtn").disabled = false;
+    $("mapNote").textContent = "精度 約 "+(Number.isFinite(c.accuracy)?Math.round(c.accuracy):"?")+" m";
+    $("pvSite").textContent = location.host || "GitHub Pages";
+    setStatus("位置情報を取得しました。精度は端末・環境により変わります。",watchId !== null);
+    if(addToHistory){
+      history.unshift(current);
+      history = history.slice(0,1000);
+      saveHistory();
+      renderHistory();
+    }
+    if(watchId !== null) addTrackPoint(current);
+  }
+  function geoError(error){
+    let message = "位置情報を取得できませんでした。";
+    if(error && error.code===1) message = "位置情報の利用が許可されませんでした。ブラウザのサイト設定を確認してください。";
+    if(error && error.code===2) message = "現在地を特定できません。GPSや位置情報サービスを確認してください。";
+    if(error && error.code===3) message = "位置情報の取得がタイムアウトしました。場所を変えて再試行してください。";
+    setStatus(message,false);
+    $("topStatus").textContent = "GPS エラー";
+    $("liveDot").classList.remove("active");
+    $("sideDot").classList.remove("active");
+  }
+  function requestPosition(){
+    if(!("geolocation" in navigator)){ setStatus("このブラウザは位置情報取得に対応していません。",false); return; }
+    if(location.protocol!=="https:" && location.hostname!=="localhost"){
+      setStatus("GPS取得にはHTTPS接続が必要です。GitHub PagesのURLで開いてください。",false); return;
+    }
+    setStatus("位置情報を取得しています…",false);
+    navigator.geolocation.getCurrentPosition(
+      p => renderPosition(p,true), geoError,
+      {enableHighAccuracy:true,timeout:20000,maximumAge:0}
+    );
+  }
+  function distanceBetween(a,b){
+    const rad = x => x*Math.PI/180;
+    const R = 6371000;
+    const dLat = rad(b.latitude-a.latitude), dLon = rad(b.longitude-a.longitude);
+    const aa = Math.sin(dLat/2)**2 + Math.cos(rad(a.latitude))*Math.cos(rad(b.latitude))*Math.sin(dLon/2)**2;
+    return 2*R*Math.atan2(Math.sqrt(aa),Math.sqrt(1-aa));
+  }
+  function addTrackPoint(point){
+    if(point.accuracy>100) return;
+    if(lastTrackPoint){
+      const d = distanceBetween(lastTrackPoint,point);
+      if(d<=1000 && d>=2) totalMeters += d;
+    }
+    lastTrackPoint = point;
+    trackPoints++;
+    $("distance").textContent = totalMeters>=1000 ? (totalMeters/1000).toFixed(2)+" km" : Math.round(totalMeters)+" m";
+    $("points").textContent = String(trackPoints);
+  }
+  function updateDuration(){
+    const sec = Math.max(0,Math.floor((Date.now()-startedAt)/1000));
+    const mm = String(Math.floor(sec/60)).padStart(2,"0");
+    const ss = String(sec%60).padStart(2,"0");
+    $("duration").textContent = mm+":"+ss;
+  }
+  function startTracking(){
+    if(watchId!==null) return;
+    if(!("geolocation" in navigator)){ setStatus("このブラウザは位置情報取得に対応していません。",false); return; }
+    if(location.protocol!=="https:" && location.hostname!=="localhost"){ setStatus("GPS取得にはHTTPS接続が必要です。GitHub Pagesで開いてください。",false); return; }
+    startedAt = Date.now();
+    lastTrackPoint = current;
+    totalMeters = 0;
+    trackPoints = 0;
+    $("distance").textContent = "0 m";
+    $("points").textContent = "0";
+    updateDuration();
+    elapsedTimer = window.setInterval(updateDuration,1000);
+    watchId = navigator.geolocation.watchPosition(
+      p => renderPosition(p,true), geoError,
+      {enableHighAccuracy:true,timeout:20000,maximumAge:1000}
+    );
+    $("startBtn").disabled = true;
+    $("sideTrackBtn").disabled = true;
+    $("stopBtn").disabled = false;
+    $("trackTag").textContent = "計測中";
+    $("trackTag").style.color = "var(--green)";
+    setStatus("移動計測中です。このページを開いている間だけ位置を記録します。",true);
+  }
+  function stopTracking(){
+    if(watchId!==null){ navigator.geolocation.clearWatch(watchId); watchId=null; }
+    if(elapsedTimer!==null){ window.clearInterval(elapsedTimer); elapsedTimer=null; }
+    $("startBtn").disabled = false;
+    $("sideTrackBtn").disabled = false;
+    $("stopBtn").disabled = true;
+    $("trackTag").textContent = "停止中";
+    $("trackTag").style.color = "";
+    $("topStatus").textContent = current ? "GPS 接続済み" : "GPS 未接続";
+    $("liveDot").classList.toggle("active",!!current);
+    setStatus(current ? "計測を停止しました。履歴はこの端末内に保存されています。" : "計測を停止しました。",false);
+  }
+  function renderHistory(){
+    $("historyCount").textContent = history.length+" 件";
+    if(!history.length){ $("historyList").innerHTML = '<div class="empty">位置情報を取得すると、ここに履歴が表示されます。</div>'; return; }
+    $("historyList").innerHTML = history.slice(0,100).map((p,i) =>
+      '<div class="historyitem"><div class="historyicon">⌖</div><div><strong>'+fmt(p.latitude,6)+', '+fmt(p.longitude,6)+'</strong><small>'+timeText(p.timestamp)+' · 精度 '+(Number.isFinite(p.accuracy)?Math.round(p.accuracy):"--")+' m</small></div><button type="button" data-index="'+i+'">地図 ↗</button></div>'
+    ).join("");
+    $("historyList").querySelectorAll("button[data-index]").forEach(btn=>{
+      btn.addEventListener("click",()=>{
+        const p=history[Number(btn.dataset.index)];
+        if(p) window.open("https://www.openstreetmap.org/?mlat="+p.latitude+"&mlon="+p.longitude+"#map=17/"+p.latitude+"/"+p.longitude,"_blank","noopener");
+      });
+    });
+  }
+  function downloadFile(name,type,data){
+    const blob = new Blob([data],{type:type});
+    const url = URL.createObjectURL(blob);
+    const a=document.createElement("a"); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  }
+  function csvCell(v){ return '"'+String(v==null?"":v).replace(/"/g,'""')+'"'; }
+  $("getBtn").addEventListener("click",requestPosition);
+  $("sideGetBtn").addEventListener("click",requestPosition);
+  $("startBtn").addEventListener("click",startTracking);
+  $("sideTrackBtn").addEventListener("click",startTracking);
+  $("stopBtn").addEventListener("click",stopTracking);
+  $("resetBtn").addEventListener("click",()=>{
+    if(watchId!==null) stopTracking();
+    totalMeters=0;trackPoints=0;lastTrackPoint=null;startedAt=0;
+    $("distance").textContent="0 m";$("duration").textContent="00:00";$("points").textContent="0";
+  });
+  $("copyBtn").addEventListener("click",async()=>{
+    if(!current)return;
+    const text="緯度: "+current.latitude+"\n経度: "+current.longitude+"\n精度: 約 "+Math.round(current.accuracy)+" m\n取得時刻: "+timeText(current.timestamp);
+    try{await navigator.clipboard.writeText(text);$("copyBtn").textContent="コピーしました ✓";setTimeout(()=>$("copyBtn").textContent="座標をコピー",1500);}
+    catch(e){window.prompt("以下をコピーしてください",text);}
+  });
+  $("mapOpenBtn").addEventListener("click",()=>{
+    if(current)window.open("https://www.openstreetmap.org/?mlat="+current.latitude+"&mlon="+current.longitude+"#map=17/"+current.latitude+"/"+current.longitude,"_blank","noopener");
+  });
+  $("csvBtn").addEventListener("click",()=>{
+    if(!history.length){alert("書き出す履歴がありません。");return;}
+    const rows=[["日時","緯度","経度","精度(m)","高度(m)","速度(m/s)","方角(deg)"],...history.map(p=>[timeText(p.timestamp),p.latitude,p.longitude,p.accuracy,p.altitude,p.speed,p.heading])];
+    downloadFile("gps-history.csv","text/csv;charset=utf-8","\uFEFF"+rows.map(r=>r.map(csvCell).join(",")).join("\r\n"));
+  });
+  $("jsonBtn").addEventListener("click",()=>{
+    if(!history.length){alert("書き出す履歴がありません。");return;}
+    downloadFile("gps-history.json","application/json;charset=utf-8",JSON.stringify(history,null,2));
+  });
+  $("clearBtn").addEventListener("click",()=>{
+    if(!history.length)return;
+    if(confirm("この端末に保存された位置情報履歴をすべて削除しますか？")){
+      history=[];saveHistory();renderHistory();
+    }
+  });
+  $("shareBtn").addEventListener("click",async()=>{
+    const url=location.href.split("#")[0];
+    try{await navigator.clipboard.writeText(url);$("shareBtn").textContent="URLをコピーしました ✓";setTimeout(()=>$("shareBtn").textContent="アプリのURLをコピー",1600);}
+    catch(e){window.prompt("共有するURLをコピーしてください",url);}
+  });
+  function escapeAttr(s){return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+  function updateOgPreview(){
+    const title=$("ogTitle").value.trim()||defaults.title;
+    const desc=$("ogDescription").value.trim()||defaults.description;
+    $("pvTitle").textContent=title;
+    $("pvDescription").textContent=desc;
+    $("pvSite").textContent=location.host||"GitHub Pages";
+    $("ogCode").textContent='<title>'+title+'</title>\n<meta name="description" content="'+escapeAttr(desc)+'">\n<meta property="og:title" content="'+escapeAttr(title)+'">\n<meta property="og:description" content="'+escapeAttr(desc)+'">';
+  }
+  $("ogTitle").addEventListener("input",updateOgPreview);
+  $("ogDescription").addEventListener("input",updateOgPreview);
+  $("copyOgBtn").addEventListener("click",async()=>{
+    try{await navigator.clipboard.writeText($("ogCode").textContent);$("copyOgBtn").textContent="設定コードをコピーしました ✓";setTimeout(()=>$("copyOgBtn").textContent="OGP設定コードをコピー",1700);}
+    catch(e){window.prompt("設定コードをコピーしてください",$("ogCode").textContent);}
+  });
+  $("defaultOgBtn").addEventListener("click",()=>{
+    $("ogTitle").value=defaults.title;$("ogDescription").value=defaults.description;updateOgPreview();
+  });
+  $("pvSite").textContent=location.host||"あなたのGitHub Pages URL";
+  updateOgPreview();
+  renderHistory();
+  window.addEventListener("pagehide",()=>{if(watchId!==null)stopTracking();});
+})();
+</script>
+</body>
+</html>
