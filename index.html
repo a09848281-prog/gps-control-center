@@ -181,6 +181,7 @@
   "use strict";
   const $ = id => document.getElementById(id);
   const STORE_KEY = "gps-control-center-history-v1";
+  const OGP_STORE_KEY = "gps-control-center-ogp-v1";
   const defaults = {
     title: "GPS Control Center | GPS位置情報コントロールセンター",
     description: "許可された端末のGPS位置を確認・計測するツール。位置情報はこの端末内で扱い、外部サーバーには送信しません。"
@@ -393,6 +394,7 @@
     const desc=$("ogDescription").value.trim()||defaults.description;
     $("pvTitle").textContent=title;
     $("pvDescription").textContent=desc;
+    try{localStorage.setItem(OGP_STORE_KEY,JSON.stringify({title:title,description:desc}));}catch(e){}
     $("pvSite").textContent=location.host||"GitHub Pages";
     $("ogCode").textContent='<title>'+title+'</title>\n<meta name="description" content="'+escapeAttr(desc)+'">\n<meta property="og:title" content="'+escapeAttr(title)+'">\n<meta property="og:description" content="'+escapeAttr(desc)+'">';
   }
@@ -406,6 +408,10 @@
     $("ogTitle").value=defaults.title;$("ogDescription").value=defaults.description;updateOgPreview();
   });
   $("pvSite").textContent=location.host||"あなたのGitHub Pages URL";
+  try{
+    const savedOg=JSON.parse(localStorage.getItem(OGP_STORE_KEY)||"null");
+    if(savedOg){if(typeof savedOg.title==="string")$("ogTitle").value=savedOg.title;if(typeof savedOg.description==="string")$("ogDescription").value=savedOg.description;}
+  }catch(e){}
   updateOgPreview();
   renderHistory();
   window.addEventListener("pagehide",()=>{if(watchId!==null)stopTracking();});
