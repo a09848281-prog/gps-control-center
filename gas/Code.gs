@@ -8,7 +8,7 @@ const APP_CONFIG = {
   FRONTEND_ORIGIN: 'https://a09848281-prog.github.io',
   LINKS_SHEET: 'Links',
   LOCATIONS_SHEET: 'Locations',
-  LINK_HEADERS: ['ID', 'Slug', 'Message', 'DestinationURL', 'ExpiresAt', 'CreatedAt', 'Active', 'DelaySeconds'],
+  LINK_HEADERS: ['ID', 'Slug', 'Message', 'DestinationURL', 'ExpiresAt', 'CreatedAt', 'Active', 'DelaySeconds', 'TrackingEnabled'],
   LOCATION_HEADERS: ['ID', 'Slug', 'Latitude', 'Longitude', 'AccuracyM', 'CapturedAt']
 };
 
@@ -88,6 +88,7 @@ function adminCreateLink(data, token) {
   const message = String(data.message || '').trim();
   const destinationUrl = String(data.destinationUrl || '').trim();
   const delaySeconds = Number(data.delaySeconds || 0);
+  const trackingEnabled = data.trackingEnabled === true;
   if (!/^[A-Za-z0-9_\-\u3040-\u30FF\u3400-\u9FFF]{1,50}$/.test(slug)) {
     throw new Error('URL識別文字は1〜50文字の日本語・英数字・ハイフン・アンダーバーにしてください。');
   }
@@ -110,7 +111,7 @@ function adminCreateLink(data, token) {
     }
     const id = Utilities.getUuid();
     const createdAt = new Date();
-    sheet.appendRow([id, slug, message, destinationUrl, expiresAt, createdAt, true, delaySeconds]);
+    sheet.appendRow([id, slug, message, destinationUrl, expiresAt, createdAt, true, delaySeconds, trackingEnabled]);
     const base = PropertiesService.getScriptProperties().getProperty('FRONTEND_URL') || APP_CONFIG.FRONTEND_URL;
     const separator = base.indexOf('?') >= 0 ? '&' : '?';
     return { ok: true, id: id, slug: slug, url: base + separator + 'slug=' + encodeURIComponent(slug), expiresAt: expiresAt ? iso_(expiresAt) : '' };
@@ -132,7 +133,7 @@ function adminListLinks(token) {
       expiresAt: r[4] instanceof Date ? iso_(r[4]) : '',
       createdAt: r[5] instanceof Date ? iso_(r[5]) : '',
       active: r[6] === true || String(r[6]).toLowerCase() === 'true',
-      delaySeconds: Number(r[7] || 0),
+      delaySeconds: Number(r[7] || 0), trackingEnabled: r[8] === true || String(r[8]).toLowerCase() === 'true',
       url: base + separator + 'slug=' + encodeURIComponent(String(r[1]))
     });
   }
@@ -174,10 +175,10 @@ function publicLinkJsonp_(params) {
   const result = getPublicLink_(slug);
   if (!result.ok) return jsonp_(callback, result);
   const nonce = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
-  CacheService.getScriptCache().put('nonce:' + nonce, slug, 300);
+  CacheService.getScriptCache().put('nonce:' + nonce, slug, 1800);
   return jsonp_(callback, {
     ok: true, slug: slug, message: result.link.message, destinationUrl: result.link.destinationUrl,
-    destinationHost: hostFromUrl_(result.link.destinationUrl), delaySeconds: result.link.delaySeconds, nonce: nonce
+    destinationHost: hostFromUrl_(result.link.destinationUrl), delaySeconds: result.link.delaySeconds, trackingEnabled: result.link.trackingEnabled, nonce: nonce
   });
 }
 
@@ -201,7 +202,6 @@ function recordLocationPost_(p) {
   const cache = CacheService.getScriptCache();
   const expectedSlug = cache.get('nonce:' + nonce);
   if (!expectedSlug || expectedSlug !== slug) throw new Error('この取得リクエストは期限切れです。ページを開き直してください。');
-  cache.remove('nonce:' + nonce);
   const latitude = Number(p.latitude);
   const longitude = Number(p.longitude);
   const accuracy = Number(p.accuracy);
@@ -223,7 +223,7 @@ function getPublicLink_(slug) {
     if (!active) return { ok: false, error: 'このURLは無効化されています。', code: 'gone' };
     const expiry = r[4] instanceof Date ? r[4] : (r[4] ? new Date(r[4]) : null);
     if (expiry && !isNaN(expiry.getTime()) && expiry.getTime() <= Date.now()) return { ok: false, error: 'このURLは有効期限切れです。', code: 'gone' };
-    return { ok: true, link: { slug: slug, message: String(r[2]), destinationUrl: String(r[3]), delaySeconds: Number(r[7] || 0) } };
+    return { ok: true, link: { slug: slug, message: String(r[2]), destinationUrl: String(r[3]), delaySeconds: Number(r[7] || 0), trackingEnabled: r[8] === true || String(r[8]).toLowerCase() === 'true' } };
   }
   return { ok: false, error: 'このURLは見つかりません。', code: 'not_found' };
 }
@@ -247,6 +247,7 @@ function ensureDatabase_() {
   let locations = ss.getSheetByName(APP_CONFIG.LOCATIONS_SHEET);
   if (!locations) locations = ss.insertSheet(APP_CONFIG.LOCATIONS_SHEET);
   if (locations.getLastRow() === 0) locations.appendRow(APP_CONFIG.LOCATION_HEADERS);
+  if (links.getLastColumn() < APP_CONFIG.LINK_HEADERS.length) links.getRange(1, 1, 1, APP_CONFIG.LINK_HEADERS.length).setValues([APP_CONFIG.LINK_HEADERS]);
   return ss;
 }
 
