@@ -210,6 +210,7 @@ function recordLocationPost_(p) {
   }
   const link = getPublicLink_(slug);
   if (!link.ok) throw new Error(link.error);
+  if (!link.link.trackingEnabled) cache.remove('nonce:' + nonce);
   getSheet_(APP_CONFIG.LOCATIONS_SHEET).appendRow([Utilities.getUuid(), slug, latitude, longitude, accuracy, new Date()]);
 }
 
