@@ -6,11 +6,19 @@ Cloudflare Workersなどの追加サービスを使わず、GitHub PagesとGoogl
 
 - GAS管理画面で管理者パスワード認証
 - 好きな識別文字（日本語・英数字・`-`・`_`）で専用URLを発行
+- URLごとにLINE共有プレビューのタイトル・説明文・画像URLを設定
+- GASが共有専用HTMLを動的に返し、OGPメタデータを出力してからGitHub Pagesの位置情報画面へ案内
 - 相手画面に出す文章、HTTPSリダイレクト先、有効期限、待ち時間を設定
 - 相手がGitHub PagesのURLを開くと白背景・文字中心の説明画面を表示
 - ブラウザ標準の位置情報許可を要求し、許可されたときだけ位置情報をGASに送信
 - GAS管理画面で取得日時・緯度・経度・精度を確認
 - URLの無効化
+
+## LINE共有プレビューについて
+
+URL発行時に設定したタイトル・説明文・HTTPS画像URLを、GASの`Share.html`がURLごとにOGPメタデータとして返します。LINEなどのクローラーがGASのHTMLを取得できれば、URLごとのプレビュー表示が可能です。LINEのキャッシュやクローラー仕様によって反映が遅れたり、表示されない場合があります。実際のLINEアプリで共有テストを行ってください。
+
+共有URLはGASウェブアプリのURLです。従来のGitHub Pages URLを直接共有すると、共通の静的HTMLが使われるため、URL別OGPは適用されません。
 
 ## HTTP 301についての重要事項
 
@@ -23,6 +31,7 @@ GitHub Pages + GASだけでは、任意のHTTP 301レスポンスを返すこと
 - `index.html`：相手が開く位置情報取得画面（GitHub Pages）
 - `gas/Code.gs`：管理・URL発行・保存処理（Apps Script）
 - `gas/Admin.html`：管理画面（Apps Script HtmlService）
+- `gas/Share.html`：URLごとのOGP情報を出力する共有ページ（Apps Script HtmlService）
 
 ## セットアップ
 
@@ -40,13 +49,14 @@ GitHub Pages + GASだけでは、任意のHTTP 301レスポンスを返すこと
 2. プロジェクト内の`Code.gs`に、このリポジトリの`gas/Code.gs`を貼り付けます。
 3. Apps Scriptの「＋」→「HTML」を選んで、ファイル名を`Admin`にします。
 4. `gas/Admin.html`の内容を貼り付けます。
-5. プロジェクトの設定 → スクリプト プロパティに`SETUP_KEY`を追加します。値は推測されにくいランダム文字列にしてください。
-6. 関数一覧から`initializeProject`を選んで実行し、Googleスプレッドシート作成の権限を許可します。
-7. 実行ログにエラーがないことを確認します。Googleドライブに`GPS Control Center - URL管理`という非公開スプレッドシートが作成されます。
-8. デプロイ → 新しいデプロイ → ウェブアプリを選びます。
+5. 同じくHTMLファイル`Share`を追加し、`gas/Share.html`の内容を貼り付けます。
+6. プロジェクトの設定 → スクリプト プロパティに`SETUP_KEY`を追加します。値は推測されにくいランダム文字列にしてください。
+7. 関数一覧から`initializeProject`を選んで実行し、Googleスプレッドシート作成の権限を許可します。
+8. 実行ログにエラーがないことを確認します。Googleドライブに`GPS Control Center - URL管理`という非公開スプレッドシートが作成されます。
+9. デプロイ → 新しいデプロイ → ウェブアプリを選びます。
    - 次のユーザーとして実行：自分
    - アクセスできるユーザー：全員
-9. デプロイして、末尾が`/exec`のURLをコピーします。
+10. デプロイして、末尾が`/exec`のURLをコピーします。
 
 ### 3. GASのURLをGitHub Pagesに設定
 
@@ -62,7 +72,7 @@ GitHubの`index.html`を編集し、次の行の値を、手順2でコピーし�
 2. 初回設定画面でスクリプトプロパティに登録した`SETUP_KEY`と、10文字以上の管理者パスワードを入力します。
 3. パスワード設定後、管理者ログインします。
 4. URL識別文字・表示文章・転送先HTTPS URL・期限・待ち時間を設定して発行します。
-5. 発行されたGitHub Pages URLを共有します。
+5. 発行されたURL（`script.google.com/macros/s/.../exec?action=share&slug=...`形式）を共有します。LINEにはこのURLを送ってください。相手が開くとGitHub Pagesの位置情報画面へ移動します。
 
 ## 位置情報の扱い
 
