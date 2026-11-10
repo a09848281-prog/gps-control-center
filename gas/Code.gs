@@ -116,10 +116,11 @@ function adminCreateLink(data, token) {
     for (let i = 1; i < rows.length; i++) {
       if (String(rows[i][1]) === slug) throw new Error('そのURL識別文字はすでに使われています。');
     }
+    const shareUrl = buildShareUrl_(slug);
     const id = Utilities.getUuid();
     const createdAt = new Date();
     sheet.appendRow([id, slug, message, destinationUrl, expiresAt, createdAt, true, delaySeconds, trackingEnabled, previewTitle, previewDescription, previewImageURL]);
-    return { ok: true, id: id, slug: slug, url: buildShareUrl_(slug), expiresAt: expiresAt ? iso_(expiresAt) : '' };
+    return { ok: true, id: id, slug: slug, url: shareUrl, expiresAt: expiresAt ? iso_(expiresAt) : '' };
   } finally {
     lock.releaseLock();
   }
@@ -250,7 +251,8 @@ function sharePage_(slug) {
   template.previewDescription = valid ? (link.previewDescription || link.message) : result.error;
   template.previewImageURL = valid ? (link.previewImageURL || '') : '';
   template.shareUrl = buildShareUrl_(slug || '');
-  template.redirectUrl = valid ? (APP_CONFIG.FRONTEND_URL + '?slug=' + encodeURIComponent(slug)) : '';
+  const frontend = PropertiesService.getScriptProperties().getProperty('FRONTEND_URL') || APP_CONFIG.FRONTEND_URL;
+  template.redirectUrl = valid ? (frontend + '?slug=' + encodeURIComponent(slug)) : '';
   template.pageMessage = valid ? '共有ページを開いています。自動で切り替わらない場合は、下のリンクを押してください。' : result.error;
   return template.evaluate().setTitle(template.previewTitle).addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
