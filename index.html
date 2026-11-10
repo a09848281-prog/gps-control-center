@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#0b1220">
   <title>GPS Control Center | GPS位置情報コントロールセンター</title>
-  <meta name="description" content="許可された端末のGPS位置を確認・計測するツール。位置情報はこの端末内で扱い、外部サーバーには送信しません。">
+  <meta name="description" content="許可された端末のGPS位置を確認・計測するツール。計測履歴は端末内に保存し、地図表示にはOpenStreetMapを利用します。">
   <meta property="og:title" content="GPS Control Center | GPS位置情報コントロールセンター">
-  <meta property="og:description" content="許可された端末のGPS位置を確認・計測するツール。位置情報はこの端末内で扱い、外部サーバーには送信しません。">
+  <meta property="og:description" content="許可された端末のGPS位置を確認・計測するツール。計測履歴は端末内に保存し、地図表示にはOpenStreetMapを利用します。">
   <meta property="og:type" content="website">
-  <meta property="og:url" content="">
+  <meta property="og:url" content="https://a09848281-prog.github.io/gps-control-center/">
   <style>
     :root{color-scheme:dark;--bg:#08111f;--panel:#101d30;--panel2:#14243a;--line:#263951;--text:#e8f0fb;--muted:#8ea3bd;--cyan:#5be0d0;--blue:#6ba8ff;--green:#56d69a;--amber:#f5c36a;--red:#ff7777}
     *{box-sizing:border-box}
@@ -91,8 +91,8 @@
   </header>
   <main class="wrap">
     <section class="hero">
-      <div><div class="eyebrow">POSITIONING SYSTEM / 01</div><h1>GPS位置情報コントロールセンター</h1><p class="sub">この端末の位置を、許可を得て計測・確認します。位置情報は外部サーバーへ自動送信されません。</p></div>
-      <div class="local-badge">🔒 端末内処理・明示的な許可制</div>
+      <div><div class="eyebrow">POSITIONING SYSTEM / 01</div><h1>GPS位置情報コントロールセンター</h1><p class="sub">この端末の位置を、許可を得て計測・確認します。計測履歴は端末内に保存されます。地図表示ではOpenStreetMapに座標を渡します。</p></div>
+      <div class="local-badge">🔒 端末内履歴・明示的な許可制</div>
     </section>
     <div class="grid">
       <div class="stack">
@@ -129,7 +129,7 @@
             <button class="btn stop" id="stopBtn" disabled>■ 計測停止</button>
             <button class="btn" id="resetBtn">計測リセット</button>
           </div>
-          <div class="hint">移動計測はこのページを開いている間だけ動作します。ブラウザを閉じたり、端末がスリープすると停止・中断する場合があります。</div>
+          <div class="hint">移動計測はこのページを開いている間だけ動作します。ブラウザを閉じたり、端末がスリープすると停止・中断する場合があります。地図を表示すると、地図サービス OpenStreetMap に地図表示用の座標が送信されます。</div>
         </section>
         <section class="card">
           <div class="cardhead"><h2>🗂 取得履歴</h2><span class="count" id="historyCount">0 件</span></div>
@@ -168,7 +168,7 @@
         </section>
         <section class="card sidecard">
           <h2>📤 URLを共有</h2>
-          <div class="notice">このボタンはアプリのURLだけを共有します。現在地や履歴はURLに含めず、相手へ自動送信もしません。</div>
+          <div class="notice">このボタンはアプリのURLだけを共有します。現在地や履歴はURLに含めず、相手へ自動送信もしません。地図表示用の座標はOpenStreetMapへ送られます。</div>
           <div class="actions" style="padding:14px 0 0"><button class="btn primary" id="shareBtn">アプリのURLをコピー</button></div>
         </section>
         <div class="notice">⚠️ このアプリは相手の端末を遠隔追跡するものではありません。位置情報は、その端末を操作する本人がページを開き、ブラウザで許可した場合にだけ取得できます。</div>
